@@ -1,83 +1,106 @@
 import streamlit as st
 
-st.set_page_config(page_title="Interactive React Flow", layout="wide")
-st.markdown("### 🧠 Interactive React Flow Diagram")
+st.set_page_config(page_title="React Flow Interactive", layout="wide")
+st.markdown("### 🧠 Interactive React Flow Diagram (Offline Build)")
 
 html_code = """
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8" />
-    <title>React Flow Demo</title>
-    <link rel="stylesheet" href="https://unpkg.com/reactflow@11.10.2/dist/style.css" />
+    <meta charset="utf-8" />
     <style>
-      html, body, #root {
-        width: 100%;
-        height: 100%;
+      html, body {
         margin: 0;
-        background-color: #f8f9fa;
-        font-family: sans-serif;
+        height: 100%;
+        overflow: hidden;
+        background-color: #f7f9fc;
+        font-family: Arial, sans-serif;
       }
-      .hazard { background:#ffcccc; border:2px solid #cc0000; }
-      .barrier { background:#e6ffe6; border:2px solid #009900; }
-      .threat  { background:#fff3cd; border:2px solid #ffcc00; }
-      .consequence { background:#e0ecff; border:2px solid #0066cc; }
+      .node {
+        position: absolute;
+        padding: 10px 20px;
+        border-radius: 8px;
+        color: #222;
+        font-weight: 500;
+        box-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+      }
+      .hazard { background: #ffcccc; border: 2px solid #cc0000; }
+      .threat { background: #fff3cd; border: 2px solid #ffcc00; }
+      .barrier { background: #e6ffe6; border: 2px solid #009900; }
+      .consequence { background: #e0ecff; border: 2px solid #0066cc; }
+      .edge {
+        position: absolute;
+        height: 3px;
+        background: #444;
+        transform-origin: 0 0;
+      }
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="diagram"></div>
 
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/reactflow@11.10.2/dist/reactflow.min.js"></script>
+    <script>
+      const diagram = document.getElementById("diagram");
 
-    <script type="text/javascript">
-      const { ReactFlow, Background, Controls, MiniMap, useNodesState, useEdgesState, addEdge } = window.ReactFlow;
-
-      const initialNodes = [
-        { id: 'hazard', position: { x: 400, y: 200 }, data: { label: '⚠️ Hazard' }, className: 'hazard' },
-        { id: 'threat1', position: { x: 150, y: 150 }, data: { label: 'Threat A' }, className: 'threat' },
-        { id: 'barrier1', position: { x: 275, y: 150 }, data: { label: 'Barrier A' }, className: 'barrier' },
-        { id: 'barrier2', position: { x: 525, y: 150 }, data: { label: 'Barrier B' }, className: 'barrier' },
-        { id: 'cons1', position: { x: 650, y: 150 }, data: { label: 'Consequence A' }, className: 'consequence' },
-      ];
-
-      const initialEdges = [
-        { id: 'e1', source: 'threat1', target: 'barrier1' },
-        { id: 'e2', source: 'barrier1', target: 'hazard' },
-        { id: 'e3', source: 'hazard', target: 'barrier2' },
-        { id: 'e4', source: 'barrier2', target: 'cons1' },
-      ];
-
-      function Flow() {
-        const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-        const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-        const onConnect = (params) => setEdges((eds) => addEdge(params, eds));
-
-        return React.createElement(
-          ReactFlow,
-          {
-            nodes,
-            edges,
-            onNodesChange,
-            onEdgesChange,
-            onConnect,
-            fitView: true,
-            attributionPosition: "bottom-left",
-            style: { background: "#f8f9fa" }
-          },
-          React.createElement(Background, { variant: "dots" }),
-          React.createElement(MiniMap, null),
-          React.createElement(Controls, null)
-        );
+      function node(id, x, y, text, cls) {
+        const el = document.createElement("div");
+        el.id = id;
+        el.className = "node " + cls;
+        el.textContent = text;
+        el.style.left = x + "px";
+        el.style.top = y + "px";
+        el.draggable = true;
+        el.ondragstart = (e) => {
+          e.dataTransfer.setData("text/plain", id);
+        };
+        el.ondragend = (e) => {
+          el.style.left = e.pageX - 40 + "px";
+          el.style.top = e.pageY - 20 + "px";
+          redraw();
+        };
+        diagram.appendChild(el);
+        return el;
       }
 
-      const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(React.createElement(Flow));
+      function edge(id1, id2) {
+        const a = document.getElementById(id1).getBoundingClientRect();
+        const b = document.getElementById(id2).getBoundingClientRect();
+        const line = document.createElement("div");
+        line.className = "edge";
+        const x1 = a.left + a.width;
+        const y1 = a.top + a.height / 2;
+        const x2 = b.left;
+        const y2 = b.top + b.height / 2;
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        line.style.width = length + "px";
+        line.style.left = x1 + "px";
+        line.style.top = y1 + "px";
+        line.style.transform = "rotate(" + angle + "deg)";
+        diagram.appendChild(line);
+      }
+
+      function redraw() {
+        document.querySelectorAll(".edge").forEach(e => e.remove());
+        edge("t1", "b1");
+        edge("b1", "h");
+        edge("h", "b2");
+        edge("b2", "c1");
+      }
+
+      // Create nodes
+      node("t1", 80, 200, "Threat A", "threat");
+      node("b1", 220, 200, "Barrier A", "barrier");
+      node("h", 360, 200, "Hazard", "hazard");
+      node("b2", 520, 200, "Barrier B", "barrier");
+      node("c1", 660, 200, "Consequence", "consequence");
+
+      redraw();
     </script>
   </body>
 </html>
 """
 
-st.components.v1.html(html_code, height=600, scrolling=False)
+st.components.v1.html(html_code, height=500, scrolling=False)
