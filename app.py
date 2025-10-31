@@ -1,279 +1,176 @@
 import streamlit as st
-st.set_page_config(page_title="Bowtie Risk Diagram", layout="wide")
-st.title("🎯 Bowtie Risk Diagram Builder (Aligned & Single Hazard)")
+st.set_page_config(page_title="Bowtie Risk Diagram (React Flow)", layout="wide")
+st.title("🎯 Bowtie Risk Diagram – React Flow Auto Layout")
 
-# --- Default structure ---
-default_nodes = [
-    ("haz1", 400, 60, "Hazard", "hazard"),
-    ("top1", 400, 220, "Top Event", "topevent"),
-]
-default_edges = [("haz1", "top1")]
-
-if "nodes" not in st.session_state:
-    st.session_state.nodes = default_nodes.copy()
-if "edges" not in st.session_state:
-    st.session_state.edges = default_edges.copy()
-
-# --- Sidebar Controls ---
-st.sidebar.header("Add / Edit Nodes")
-
-# Find the single Hazard
-hazard_node = [n for n in st.session_state.nodes if n[4] == "hazard"][0]
-hazard_index = st.session_state.nodes.index(hazard_node)
-
-# Hazard label editing
-hazard_label = st.sidebar.text_input("Hazard label:", value=hazard_node[3])
-if st.sidebar.button("💾 Update Hazard"):
-    st.session_state.nodes[hazard_index] = (
-        hazard_node[0],
-        hazard_node[1],
-        hazard_node[2],
-        hazard_label,
-        "hazard",
-    )
-
-# Add other nodes
+# --- Sidebar ---
+st.sidebar.header("Add / Edit Elements")
 node_type = st.sidebar.selectbox(
     "Select Node Type:",
-    [
-        "Top Event",
-        "Threat",
-        "Preventive Barrier",
-        "Mitigation Barrier",
-        "Consequence",
-    ],
+    ["Hazard", "Top Event", "Threat", "Preventive Barrier", "Mitigation Barrier", "Consequence"],
 )
-label_input = st.sidebar.text_input("Label for new node:", value=f"New {node_type}")
+label_input = st.sidebar.text_input("Label:", value=f"New {node_type}")
 add_button = st.sidebar.button("➕ Add Node")
 
-# --- Positioning constants ---
-X = {
-    "hazard": 400,
-    "topevent": 400,
-    "threat": 120,
-    "barrier_L": 250,
-    "barrier_R": 550,
-    "consequence": 700,
-}
-Y_BASE = 150
-Y_SPACING = 80
+# --- Initialize default graph ---
+default_nodes = [
+    {"id": "haz1", "type": "hazard", "data": {"label": "Hazard"}, "position": {"x": 0, "y": 0}},
+    {"id": "top1", "type": "topevent", "data": {"label": "Top Event"}, "position": {"x": 0, "y": 200}},
+]
+default_edges = [{"id": "e1", "source": "haz1", "target": "top1"}]
 
-# --- Helpers ---
-def nodes_of(cls):
-    return [n for n in st.session_state.nodes if n[4] == cls]
+if "nodes" not in st.session_state:
+    st.session_state.nodes = default_nodes
+if "edges" not in st.session_state:
+    st.session_state.edges = default_edges
 
-def add_edge(a, b):
-    st.session_state.edges.append((a, b))
-
-# --- Add Logic ---
+# --- Add new nodes logic ---
 if add_button:
-    new_id = f"n{len(st.session_state.nodes)+1}"
-    label = label_input.strip() if label_input else node_type
-    y = Y_BASE
+    nodes = st.session_state.nodes
+    edges = st.session_state.edges
+    new_id = f"n{len(nodes)+1}"
+    label = label_input.strip() or node_type
+    node = {"id": new_id, "type": node_type.lower().replace(" ", ""), "data": {"label": label}, "position": {"x": 0, "y": 0}}
+    nodes.append(node)
 
-    if node_type == "Top Event":
-        st.session_state.nodes.append((new_id, X["topevent"], 220, label, "topevent"))
-        add_edge("haz1", new_id)
+    # Connect according to type
+    if node_type == "Hazard":
+        # Replace existing hazard
+        nodes = [n for n in nodes if n["type"] != "hazard"]
+        node["id"] = "haz1"
+        nodes.insert(0, node)
+        edges = [e for e in edges if e["source"] != "haz1" and e["target"] != "haz1"]
+        edges.append({"id": "e_haz_top", "source": "haz1", "target": "top1"})
 
-    elif node_type == "Threat":
-        threats = nodes_of("threat")
-        y = Y_BASE + len(threats) * Y_SPACING
-        st.session_state.nodes.append((new_id, X["threat"], y, label, "threat"))
-        add_edge(new_id, "top1")
+    elif node_type == "Top Event":
+        node["id"] = "top1"
+        nodes = [n for n in nodes if n["type"] != "topevent"]
+        nodes.append(node)
+        edges = [e for e in edges if e["source"] != "haz1" and e["target"] != "top1"]
+        edges.append({"id": "e_haz_top", "source": "haz1", "target": "top1"})
 
-    elif node_type == "Preventive Barrier":
-        barriers = nodes_of("barrier_L")
-        y = Y_BASE + len(barriers) * Y_SPACING
-        st.session_state.nodes.append((new_id, X["barrier_L"], y, label, "barrier_L"))
-        threats = nodes_of("threat")
-        if threats:
-            add_edge(threats[-1][0], new_id)
-        add_edge(new_id, "top1")
+    elif node_type in ["Threat", "Preventive Barrier"]:
+        edges.append({"id": f"e{len(edges)+1}", "source": new_id, "target": "top1"})
 
-    elif node_type == "Mitigation Barrier":
-        barriers = nodes_of("barrier_R")
-        y = Y_BASE + len(barriers) * Y_SPACING
-        st.session_state.nodes.append((new_id, X["barrier_R"], y, label, "barrier_R"))
-        add_edge("top1", new_id)
+    elif node_type in ["Mitigation Barrier", "Consequence"]:
+        edges.append({"id": f"e{len(edges)+1}", "source": "top1", "target": new_id})
 
-    elif node_type == "Consequence":
-        cons = nodes_of("consequence")
-        y = Y_BASE + len(cons) * Y_SPACING
-        st.session_state.nodes.append((new_id, X["consequence"], y, label, "consequence"))
-        add_edge("top1", new_id)
+    st.session_state.nodes = nodes
+    st.session_state.edges = edges
 
-# --- Reset Button ---
-if st.button("🔄 Reset Diagram"):
-    st.session_state.nodes = default_nodes.copy()
-    st.session_state.edges = default_edges.copy()
+# --- Prepare JS data ---
+nodes_js = str(st.session_state.nodes).replace("'", '"')
+edges_js = str(st.session_state.edges).replace("'", '"')
 
-nodes = st.session_state.nodes
-edges = st.session_state.edges
-
-# --- JS Data ---
-node_js = "\n".join(
-    [f"node('{n[0]}', {n[1]}, {n[2]}, '{n[3]}', '{n[4]}');" for n in nodes]
-)
-edge_js = "\n".join([f"edge('{a}', '{b}');" for (a, b) in edges])
-
-# --- HTML & JS rendering ---
+# --- Render React Flow with Dagre Layout ---
 html_code = f"""
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8" />
-  <style>
-    html, body {{
-      margin: 0;
-      height: 100%;
-      overflow: hidden;
-      background: #f8fafc;
-      font-family: Arial, sans-serif;
-    }}
-    .node {{
-      position: absolute;
-      padding: 10px 20px;
-      border-radius: 6px;
-      font-weight: 500;
-      color: #222;
-      text-align: center;
-      box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
-    }}
-    .hazard {{
-      background: white;
-      border: 2px solid black;
-      position: relative;
-      width: 160px;
-    }}
-    .hazard::before {{
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 20px;
-      background: repeating-linear-gradient(
-        45deg,
-        #fff200,
-        #fff200 10px,
-        #000 10px,
-        #000 20px
-      );
-      border-bottom: 1px solid #000;
-      border-top-left-radius: 6px;
-      border-top-right-radius: 6px;
-    }}
-    .topevent {{
-      background: #28a745;
-      border: 3px solid #155724;
-      color: #fff;
-      width: 120px;
-      height: 60px;
-      line-height: 60px;
-    }}
-    .threat {{
-      background: #fff3cd;
-      border: 2px solid #ffcc00;
-      width: 140px;
-    }}
-    .barrier_L, .barrier_R {{
-      background: #cce5ff;
-      border: 2px solid #007bff;
-      width: 140px;
-    }}
-    .consequence {{
-      background: #f8d7da;
-      border: 2px solid #dc3545;
-      width: 140px;
-    }}
-    .edge {{
-      position: absolute;
-      height: 2px;
-      background: #333;
-      transform-origin: 0 0;
-    }}
-    .arrow::after {{
-      content: "";
-      position: absolute;
-      right: 0;
-      top: -3px;
-      border-top: 5px solid transparent;
-      border-bottom: 5px solid transparent;
-      border-left: 8px solid #333;
-    }}
-    #save {{
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      padding: 10px 18px;
-      background: #0066cc;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }}
-  </style>
-</head>
-<body>
-  <div id="diagram"></div>
-  <button id="save">💾 Save Diagram as PNG</button>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Bowtie Diagram</title>
+    <link rel="stylesheet" href="https://unpkg.com/reactflow@11.10.2/dist/style.css" />
+    <style>
+      html, body, #root {{
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        background: #f8fafc;
+      }}
+      .react-flow__node-hazard {{
+        border: 2px solid black;
+        background: white;
+        background-image: repeating-linear-gradient(
+          45deg, #fff200, #fff200 10px, #000 10px, #000 20px
+        );
+        background-size: 100% 20px;
+        color: #000;
+        font-weight: bold;
+        text-align: center;
+      }}
+      .react-flow__node-topevent {{
+        background: #28a745;
+        color: white;
+        border: 3px solid #155724;
+        text-align: center;
+        font-weight: bold;
+      }}
+      .react-flow__node-threat {{
+        background: #fff3cd;
+        border: 2px solid #ffcc00;
+        text-align: center;
+      }}
+      .react-flow__node-preventivebarrier,
+      .react-flow__node-mitigationbarrier {{
+        background: #cce5ff;
+        border: 2px solid #007bff;
+        text-align: center;
+      }}
+      .react-flow__node-consequence {{
+        background: #f8d7da;
+        border: 2px solid #dc3545;
+        text-align: center;
+      }}
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
 
-  <script>
-    const diagram = document.getElementById("diagram");
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/reactflow@11.10.2/dist/reactflow.min.js"></script>
+    <script crossorigin src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
 
-    function node(id, x, y, text, cls) {{
-      const el = document.createElement("div");
-      el.id = id;
-      el.className = "node " + cls;
-      el.textContent = text;
-      el.style.left = x + "px";
-      el.style.top = y + "px";
-      diagram.appendChild(el);
-    }}
+    <script>
+      const {{ ReactFlow, Background, Controls, MiniMap }} = window.ReactFlow;
 
-    function edge(aId, bId) {{
-      const A = document.getElementById(aId).getBoundingClientRect();
-      const B = document.getElementById(bId).getBoundingClientRect();
-      const line = document.createElement("div");
-      line.className = "edge";
-      const x1 = A.left + A.width / 2;
-      const y1 = A.top + A.height;
-      const x2 = B.left + B.width / 2;
-      const y2 = B.top;
-      const dx = x2 - x1;
-      const dy = y2 - y1;
-      const len = Math.sqrt(dx * dx + dy * dy);
-      const ang = Math.atan2(dy, dx) * 180 / Math.PI;
-      line.style.width = len + "px";
-      line.style.left = x1 + "px";
-      line.style.top = y1 + "px";
-      line.style.transform = "rotate(" + ang + "deg)";
-      diagram.appendChild(line);
-    }}
+      const nodes = {nodes_js};
+      const edges = {edges_js};
 
-    function redraw() {{
-      document.querySelectorAll(".edge").forEach(e => e.remove());
-      {edge_js}
-    }}
+      // --- Dagre layout ---
+      const dagreGraph = new dagre.graphlib.Graph();
+      dagreGraph.setDefaultEdgeLabel(() => ({{}}));
+      const nodeWidth = 180;
+      const nodeHeight = 60;
 
-    {node_js}
-    redraw();
-
-    const s = document.createElement("script");
-    s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-    s.onload = () => {{
-      document.getElementById("save").onclick = () => {{
-        html2canvas(document.body).then(c => {{
-          const a = document.createElement("a");
-          a.download = "bowtie_diagram.png";
-          a.href = c.toDataURL("image/png");
-          a.click();
+      const layout = (nodes, edges) => {{
+        dagreGraph.setGraph({{ rankdir: "TB", nodesep: 80, ranksep: 100 }});
+        nodes.forEach(node => dagreGraph.setNode(node.id, {{ width: nodeWidth, height: nodeHeight }}));
+        edges.forEach(edge => dagreGraph.setEdge(edge.source, edge.target));
+        dagre.layout(dagreGraph);
+        return nodes.map(node => {{
+          const pos = dagreGraph.node(node.id);
+          node.position = {{ x: pos.x - nodeWidth / 2, y: pos.y - nodeHeight / 2 }};
+          return node;
         }});
       }};
-    }};
-    document.body.appendChild(s);
-  </script>
-</body>
+
+      const layoutedNodes = layout(nodes, edges);
+
+      function App() {{
+        return React.createElement(
+          ReactFlow,
+          {{
+            nodes: layoutedNodes,
+            edges: edges.map(e => ({{
+              ...e,
+              markerEnd: {{ type: "arrowclosed", color: "#333" }},
+              style: {{ stroke: "#333", strokeWidth: 2 }}
+            }})),
+            fitView: true,
+            snapToGrid: true,
+            proOptions: {{ hideAttribution: true }},
+          }},
+          React.createElement(Background, {{ variant: "dots" }}),
+          React.createElement(Controls, null),
+          React.createElement(MiniMap, null)
+        );
+      }}
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(React.createElement(App));
+    </script>
+  </body>
 </html>
 """
+
 st.components.v1.html(html_code, height=850, scrolling=False)
