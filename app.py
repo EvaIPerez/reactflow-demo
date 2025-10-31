@@ -51,13 +51,13 @@ html_code = """
     <title>Bowtie Diagram</title>
     <link rel="stylesheet" href="https://unpkg.com/reactflow@11.10.2/dist/style.css" />
     <style>
-      html, body, #root {{
+      html, body, #root {
         width: 100%;
         height: 100%;
         margin: 0;
         background: #f8fafc;
-      }}
-      .react-flow__node-hazard {{
+      }
+      .react-flow__node-hazard {
         border: 2px solid black;
         background: white;
         background-image: repeating-linear-gradient(
@@ -67,91 +67,94 @@ html_code = """
         color: #000;
         text-align: center;
         font-weight: bold;
-      }}
-      .react-flow__node-topevent {{
+      }
+      .react-flow__node-topevent {
         background: #28a745;
         border: 3px solid #155724;
         color: white;
         text-align: center;
         font-weight: bold;
-      }}
-      .react-flow__node-threat {{
+      }
+      .react-flow__node-threat {
         background: #fff3cd;
         border: 2px solid #ffcc00;
         text-align: center;
-      }}
+      }
       .react-flow__node-preventivebarrier,
-      .react-flow__node-mitigationbarrier {{
+      .react-flow__node-mitigationbarrier {
         background: #cce5ff;
         border: 2px solid #007bff;
         text-align: center;
-      }}
-      .react-flow__node-consequence {{
+      }
+      .react-flow__node-consequence {
         background: #f8d7da;
         border: 2px solid #dc3545;
         text-align: center;
-      }}
+      }
     </style>
   </head>
   <body>
     <div id="root"></div>
 
+    <!-- Load React + ReactFlow + Dagre in correct order -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/reactflow@11.10.2/dist/reactflow.min.js"></script>
     <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+    <script src="https://unpkg.com/reactflow@11.10.2/dist/reactflow.min.js"></script>
 
     <script>
-      const nodes = {nodes_js};
-      const edges = {edges_js};
-      const dagreGraph = new dagre.graphlib.Graph();
-      dagreGraph.setDefaultEdgeLabel(() => ({{}}));
-      const nodeWidth = 180;
-      const nodeHeight = 60;
+      // Wait for everything to load fully
+      window.onload = function() {
+        const nodes = %s;
+        const edges = %s;
+        const nodeWidth = 180;
+        const nodeHeight = 60;
 
-      const layoutGraph = (nodes, edges) => {{
-        dagreGraph.setGraph({{ rankdir: "TB", nodesep: 120, ranksep: 100 }});
-        nodes.forEach(node => dagreGraph.setNode(node.id, {{ width: nodeWidth, height: nodeHeight }}));
+        const dagreGraph = new dagre.graphlib.Graph();
+        dagreGraph.setDefaultEdgeLabel(() => ({}));
+        dagreGraph.setGraph({ rankdir: "TB", nodesep: 100, ranksep: 120 });
+
+        nodes.forEach(node => dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight }));
         edges.forEach(edge => dagreGraph.setEdge(edge.source, edge.target));
         dagre.layout(dagreGraph);
-        return nodes.map(node => {{
+
+        const layoutedNodes = nodes.map(node => {
           const pos = dagreGraph.node(node.id);
-          node.position = {{ x: pos.x - nodeWidth / 2, y: pos.y - nodeHeight / 2 }};
+          node.position = { x: pos.x - nodeWidth / 2, y: pos.y - nodeHeight / 2 };
           return node;
-        }});
-      }};
+        });
 
-      const layoutedNodes = layoutGraph(nodes, edges);
-      const layoutedEdges = edges.map(e => ({
-        ...e,
-        markerEnd: {{ type: "arrowclosed", color: "#333" }},
-        style: {{ stroke: "#333", strokeWidth: 2 }}
-      }}));
+        const layoutedEdges = edges.map(e => ({
+          ...e,
+          markerEnd: { type: "arrowclosed", color: "#333" },
+          style: { stroke: "#333", strokeWidth: 2 }
+        }));
 
-      const {{ ReactFlow, Background, Controls, MiniMap }} = window.ReactFlow;
+        const { ReactFlow, Background, Controls, MiniMap } = window.ReactFlow;
 
-      function App() {{
-        return React.createElement(
-          ReactFlow,
-          {{
-            nodes: layoutedNodes,
-            edges: layoutedEdges,
-            fitView: true,
-            proOptions: {{ hideAttribution: true }},
-          }},
-          React.createElement(Background, {{ variant: "dots" }}),
-          React.createElement(Controls, null),
-          React.createElement(MiniMap, null)
-        );
-      }}
+        function App() {
+          return React.createElement(
+            ReactFlow,
+            {
+              nodes: layoutedNodes,
+              edges: layoutedEdges,
+              fitView: true,
+              proOptions: { hideAttribution: true },
+            },
+            React.createElement(Background, { variant: "dots" }),
+            React.createElement(Controls, null),
+            React.createElement(MiniMap, null)
+          );
+        }
 
-      const root = ReactDOM.createRoot(document.getElementById("root"));
-      root.render(React.createElement(App));
+        const root = ReactDOM.createRoot(document.getElementById("root"));
+        root.render(React.createElement(App));
+      };
     </script>
   </body>
 </html>
-"""
-
+""" % (nodes_js, edges_js)
+  
 # --- Render in sandboxed iframe ---
 st.components.v1.html(
     '<iframe srcdoc="' + html_code + '" width="100%" height="850" style="border:none;"></iframe>',
