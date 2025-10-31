@@ -16,11 +16,12 @@ if "nodes" not in st.session_state:
 # --- Buttons ---
 col1, col2 = st.columns([1, 1])
 with col1:
-    if st.button("➕ Add Node"):
-        new_id = f"n{len(st.session_state.nodes)+1}"
-        st.session_state.nodes.append(
-            (150 + len(st.session_state.nodes) * 80, 350, f"Node {len(st.session_state.nodes)}", "barrier")
-        )
+   if st.button("➕ Add Node"):
+    new_index = len(st.session_state.nodes) + 1
+    new_id = f"n{new_index}"
+    st.session_state.nodes.append(
+        (new_id, 150 + new_index * 80, 350, f"Node {new_index}", "barrier")
+    )        
 with col2:
     if st.button("🔄 Reset Diagram"):
         st.session_state.nodes = [
