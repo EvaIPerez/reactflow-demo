@@ -42,6 +42,7 @@ if add_button:
 nodes_js = str(st.session_state.nodes).replace("'", '"')
 edges_js = str(st.session_state.edges).replace("'", '"')
 
+
 # --- React Flow HTML (UMD, Streamlit-safe) ---
 html_code = """
 <!DOCTYPE html>
@@ -63,7 +64,7 @@ html_code = """
         background-image: repeating-linear-gradient(
           45deg, #fff200, #fff200 10px, #000 10px, #000 20px
         );
-        background-size: 100% 20px;
+        background-size: 100px 20px;
         color: #000;
         text-align: center;
         font-weight: bold;
@@ -96,17 +97,16 @@ html_code = """
   <body>
     <div id="root"></div>
 
-    <!-- Load React + ReactFlow + Dagre in correct order -->
+    <!-- React Flow + Dagre libraries -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
     <script src="https://unpkg.com/reactflow@11.10.2/dist/reactflow.min.js"></script>
 
     <script>
-      // Wait for everything to load fully
       window.onload = function() {
-        const nodes = %s;
-        const edges = %s;
+        const nodes = NODE_DATA;
+        const edges = EDGE_DATA;
         const nodeWidth = 180;
         const nodeHeight = 60;
 
@@ -139,7 +139,7 @@ html_code = """
               nodes: layoutedNodes,
               edges: layoutedEdges,
               fitView: true,
-              proOptions: { hideAttribution: true },
+              proOptions: { hideAttribution: true }
             },
             React.createElement(Background, { variant: "dots" }),
             React.createElement(Controls, null),
@@ -153,14 +153,17 @@ html_code = """
     </script>
   </body>
 </html>
-""" 
-# Safely insert JSON data
-html_code = html_code.replace("%s", nodes_js, 1)
-html_code = html_code.replace("%s", edges_js, 1)
-  
+"""
+
+# --- Safely inject your Streamlit data ---
+html_code = html_code.replace("NODE_DATA", str(st.session_state.nodes).replace("'", '"'))
+html_code = html_code.replace("EDGE_DATA", str(st.session_state.edges).replace("'", '"'))
+
 # --- Render in sandboxed iframe ---
 st.components.v1.html(
     '<iframe srcdoc="' + html_code + '" width="100%" height="850" style="border:none;"></iframe>',
     height=850,
     scrolling=False,
-)     
+)
+ 
+ 
