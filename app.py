@@ -1,8 +1,8 @@
 import streamlit as st
-st.set_page_config(page_title="Bowtie Risk Diagram (React Flow)", layout="wide")
-st.title("🎯 Bowtie Risk Diagram – React Flow Auto Layout")
+st.set_page_config(page_title="Bowtie Risk Diagram", layout="wide")
+st.title("🎯 Bowtie Risk Diagram – React Flow Auto Layout (Stable Version)")
 
-# --- Sidebar ---
+# --- Sidebar Controls ---
 st.sidebar.header("Add / Edit Elements")
 node_type = st.sidebar.selectbox(
     "Select Node Type:",
@@ -11,7 +11,7 @@ node_type = st.sidebar.selectbox(
 label_input = st.sidebar.text_input("Label:", value=f"New {node_type}")
 add_button = st.sidebar.button("➕ Add Node")
 
-# --- Initialize nodes/edges ---
+# --- Initialize default nodes and edges ---
 default_nodes = [
     {"id": "haz1", "type": "hazard", "data": {"label": "Hazard"}, "position": {"x": 0, "y": 0}},
     {"id": "top1", "type": "topevent", "data": {"label": "Top Event"}, "position": {"x": 0, "y": 200}},
@@ -23,7 +23,7 @@ if "nodes" not in st.session_state:
 if "edges" not in st.session_state:
     st.session_state.edges = default_edges
 
-# --- Add node logic ---
+# --- Add Node Logic ---
 if add_button:
     new_id = f"n{len(st.session_state.nodes)+1}"
     label = label_input.strip() or node_type
@@ -38,11 +38,12 @@ if add_button:
     elif node_type in ["Mitigation Barrier", "Consequence"]:
         st.session_state.edges.append({"id": f"e{len(st.session_state.edges)+1}", "source": "top1", "target": new_id})
 
+# --- Convert Python → JS ---
 nodes_js = str(st.session_state.nodes).replace("'", '"')
 edges_js = str(st.session_state.edges).replace("'", '"')
 
-# --- HTML page for React Flow ---
-react_html = f"""
+# --- React Flow HTML (UMD, Streamlit-safe) ---
+html_code = f"""
 <!DOCTYPE html>
 <html>
   <head>
@@ -55,7 +56,6 @@ react_html = f"""
         height: 100%;
         margin: 0;
         background: #f8fafc;
-        font-family: Arial, sans-serif;
       }}
       .react-flow__node-hazard {{
         border: 2px solid black;
@@ -95,12 +95,13 @@ react_html = f"""
   </head>
   <body>
     <div id="root"></div>
-    <script type="module">
-      import React from "https://esm.sh/react@18.2.0";
-      import ReactDOM from "https://esm.sh/react-dom@18.2.0";
-      import ReactFlow, {{ Background, Controls, MiniMap }} from "https://esm.sh/reactflow@11.10.2";
-      import dagre from "https://esm.sh/dagre@0.8.5";
 
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/reactflow@11.10.2/dist/reactflow.min.js"></script>
+    <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+
+    <script>
       const nodes = {nodes_js};
       const edges = {edges_js};
       const dagreGraph = new dagre.graphlib.Graph();
@@ -108,8 +109,8 @@ react_html = f"""
       const nodeWidth = 180;
       const nodeHeight = 60;
 
-      const layout = (nodes, edges) => {{
-        dagreGraph.setGraph({{ rankdir: "TB", nodesep: 80, ranksep: 100 }});
+      const layoutGraph = (nodes, edges) => {{
+        dagreGraph.setGraph({{ rankdir: "TB", nodesep: 120, ranksep: 100 }});
         nodes.forEach(node => dagreGraph.setNode(node.id, {{ width: nodeWidth, height: nodeHeight }}));
         edges.forEach(edge => dagreGraph.setEdge(edge.source, edge.target));
         dagre.layout(dagreGraph);
@@ -120,20 +121,23 @@ react_html = f"""
         }});
       }};
 
-      const layoutedNodes = layout(nodes, edges);
+      const layoutedNodes = layoutGraph(nodes, edges);
+      const layoutedEdges = edges.map(e => ({
+        ...e,
+        markerEnd: {{ type: "arrowclosed", color: "#333" }},
+        style: {{ stroke: "#333", strokeWidth: 2 }}
+      }));
+
+      const {{ ReactFlow, Background, Controls, MiniMap }} = window.ReactFlow;
 
       function App() {{
         return React.createElement(
           ReactFlow,
           {{
             nodes: layoutedNodes,
-            edges: edges.map(e => ({{
-              ...e,
-              markerEnd: {{ type: "arrowclosed", color: "#333" }},
-              style: {{ stroke: "#333", strokeWidth: 2 }}
-            }})),
+            edges: layoutedEdges,
             fitView: true,
-            proOptions: {{ hideAttribution: true }}
+            proOptions: {{ hideAttribution: true }},
           }},
           React.createElement(Background, {{ variant: "dots" }}),
           React.createElement(Controls, null),
@@ -141,17 +145,17 @@ react_html = f"""
         );
       }}
 
-      ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(React.createElement(App));
     </script>
   </body>
 </html>
 """
 
-# --- Render via iframe so it executes JS safely ---
+# --- Render in sandboxed iframe ---
 st.components.v1.html(
-    f'<iframe srcdoc="{react_html}" width="100%" height="850" style="border:none;"></iframe>',
+    f'<iframe srcdoc="{html_code}" width="100%" height="850" style="border:none;"></iframe>',
     height=850,
     scrolling=False,
 )
-
           
