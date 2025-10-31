@@ -43,7 +43,7 @@ nodes_js = str(st.session_state.nodes).replace("'", '"')
 edges_js = str(st.session_state.edges).replace("'", '"')
 
 # --- React Flow HTML (UMD, Streamlit-safe) ---
-html_code = f"""
+html_code = """
 <!DOCTYPE html>
 <html>
   <head>
@@ -154,8 +154,7 @@ html_code = f"""
 
 # --- Render in sandboxed iframe ---
 st.components.v1.html(
-    f'<iframe srcdoc="{html_code}" width="100%" height="850" style="border:none;"></iframe>',
+    '<iframe srcdoc="' + html_code + '" width="100%" height="850" style="border:none;"></iframe>',
     height=850,
     scrolling=False,
-)
-          
+)     
