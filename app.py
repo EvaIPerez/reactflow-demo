@@ -153,7 +153,10 @@ html_code = """
     </script>
   </body>
 </html>
-""" % (nodes_js, edges_js)
+""" 
+# Safely insert JSON data
+html_code = html_code.replace("%s", nodes_js, 1)
+html_code = html_code.replace("%s", edges_js, 1)
   
 # --- Render in sandboxed iframe ---
 st.components.v1.html(
