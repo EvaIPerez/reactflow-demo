@@ -126,7 +126,7 @@ html_code = f"""
         ...e,
         markerEnd: {{ type: "arrowclosed", color: "#333" }},
         style: {{ stroke: "#333", strokeWidth: 2 }}
-      }));
+      }}));
 
       const {{ ReactFlow, Background, Controls, MiniMap }} = window.ReactFlow;
 
