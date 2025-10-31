@@ -1,48 +1,82 @@
 import streamlit as st
 
-st.set_page_config(page_title="React Flow Interactive", layout="wide")
-st.markdown("### 🧠 Interactive React Flow Diagram (Offline Build)")
+st.set_page_config(page_title="Interactive Bowtie Diagram", layout="wide")
+st.title("🧠 Interactive Bowtie Diagram")
 
-html_code = """
+# --- Session state for nodes ---
+if "nodes" not in st.session_state:
+    st.session_state.nodes = [
+        ("t1", 80, 200, "Threat A", "threat"),
+        ("b1", 220, 200, "Barrier A", "barrier"),
+        ("h", 360, 200, "Hazard", "hazard"),
+        ("b2", 520, 200, "Barrier B", "barrier"),
+        ("c1", 660, 200, "Consequence", "consequence"),
+    ]
+
+# --- Buttons ---
+col1, col2 = st.columns([1, 1])
+with col1:
+    if st.button("➕ Add Node"):
+        new_id = f"n{len(st.session_state.nodes)+1}"
+        st.session_state.nodes.append(
+            (150 + len(st.session_state.nodes) * 80, 350, f"Node {len(st.session_state.nodes)}", "barrier")
+        )
+with col2:
+    if st.button("🔄 Reset Diagram"):
+        st.session_state.nodes = [
+            ("t1", 80, 200, "Threat A", "threat"),
+            ("b1", 220, 200, "Barrier A", "barrier"),
+            ("h", 360, 200, "Hazard", "hazard"),
+            ("b2", 520, 200, "Barrier B", "barrier"),
+            ("c1", 660, 200, "Consequence", "consequence"),
+        ]
+
+nodes = st.session_state.nodes
+
+# --- Build HTML dynamically ---
+node_js_array = "\n".join(
+    [f"node('{n[0]}', {n[1]}, {n[2]}, '{n[3]}', '{n[4]}');" for n in nodes]
+)
+
+html_code = f"""
 <!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
     <style>
-      html, body {
+      html, body {{
         margin: 0;
         height: 100%;
         overflow: hidden;
         background-color: #f7f9fc;
         font-family: Arial, sans-serif;
-      }
-      .node {
+      }}
+      .node {{
         position: absolute;
         padding: 10px 20px;
         border-radius: 8px;
         color: #222;
         font-weight: 500;
         box-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-      }
-      .hazard { background: #ffcccc; border: 2px solid #cc0000; }
-      .threat { background: #fff3cd; border: 2px solid #ffcc00; }
-      .barrier { background: #e6ffe6; border: 2px solid #009900; }
-      .consequence { background: #e0ecff; border: 2px solid #0066cc; }
-      .edge {
+      }}
+      .hazard {{ background: #ffcccc; border: 2px solid #cc0000; }}
+      .threat {{ background: #fff3cd; border: 2px solid #ffcc00; }}
+      .barrier {{ background: #e6ffe6; border: 2px solid #009900; }}
+      .consequence {{ background: #e0ecff; border: 2px solid #0066cc; }}
+      .edge {{
         position: absolute;
         height: 3px;
         background: #444;
         transform-origin: 0 0;
-      }
+      }}
     </style>
   </head>
   <body>
     <div id="diagram"></div>
-
     <script>
       const diagram = document.getElementById("diagram");
 
-      function node(id, x, y, text, cls) {
+      function node(id, x, y, text, cls) {{
         const el = document.createElement("div");
         el.id = id;
         el.className = "node " + cls;
@@ -50,19 +84,16 @@ html_code = """
         el.style.left = x + "px";
         el.style.top = y + "px";
         el.draggable = true;
-        el.ondragstart = (e) => {
-          e.dataTransfer.setData("text/plain", id);
-        };
-        el.ondragend = (e) => {
+        el.ondragend = (e) => {{
           el.style.left = e.pageX - 40 + "px";
           el.style.top = e.pageY - 20 + "px";
           redraw();
-        };
+        }};
         diagram.appendChild(el);
         return el;
-      }
+      }}
 
-      function edge(id1, id2) {
+      function edge(id1, id2) {{
         const a = document.getElementById(id1).getBoundingClientRect();
         const b = document.getElementById(id2).getBoundingClientRect();
         const line = document.createElement("div");
@@ -80,22 +111,18 @@ html_code = """
         line.style.top = y1 + "px";
         line.style.transform = "rotate(" + angle + "deg)";
         diagram.appendChild(line);
-      }
+      }}
 
-      function redraw() {
+      function redraw() {{
         document.querySelectorAll(".edge").forEach(e => e.remove());
-        edge("t1", "b1");
-        edge("b1", "h");
-        edge("h", "b2");
-        edge("b2", "c1");
-      }
+        if (document.getElementById("t1") && document.getElementById("b1")) edge("t1", "b1");
+        if (document.getElementById("b1") && document.getElementById("h")) edge("b1", "h");
+        if (document.getElementById("h") && document.getElementById("b2")) edge("h", "b2");
+        if (document.getElementById("b2") && document.getElementById("c1")) edge("b2", "c1");
+      }}
 
-      // Create nodes
-      node("t1", 80, 200, "Threat A", "threat");
-      node("b1", 220, 200, "Barrier A", "barrier");
-      node("h", 360, 200, "Hazard", "hazard");
-      node("b2", 520, 200, "Barrier B", "barrier");
-      node("c1", 660, 200, "Consequence", "consequence");
+      // --- Build nodes dynamically from Python ---
+      {node_js_array}
 
       redraw();
     </script>
